@@ -63,7 +63,7 @@ def load_instance():
 
 @app.route("/bbs/howtouse")
 def view_bbs_how_to_use():
-    return render_template("bbs.html")
+    return render_template("bbshow.html")
 
 if __name__ == "__main__":
     app.run(debug=True)
