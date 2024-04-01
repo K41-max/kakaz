@@ -25,7 +25,7 @@ def home():
 
 @app.route("/bbs")
 def view_bbs():
-    return render_template("view/bbs.html", request=request)
+    return render_template("views/bbs.html", request=request)
 
 @app.route("/bbs/info")
 def view_bbs_info():
