@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lnag="ja">
+<head>
+　<title>Yuki BBS 改造インスタンス </title>
+　<meta charset="UTF-8">
+　<meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+      :root {
+        --light-bg: #fff;
+        --light-fg: #000;
+        --light-border-bg: transparent;
+        --light-accent: #00f;
+        --light-link-color: var("--light-accent");
+        --light-button-bg: var("--light-accent");
+        --light-button-fg: var("--light-bg");
+        --dark-bg: #111;
+        --dark-fg: #ddd;
+        --dark-border-bg: transparent;
+        --dark-accent: #0ff;
+        --dark-link-color: var("--dark-accent");
+        --dark-button-bg: var("--dark-bg");
+        --dark-button-fg: var("--dark-fg");
+        --link-hover: #0cf;
+      }
+
+      * {
+        margin: 0;
+      }
+      
+      .example4 {
+        background: linear-gradient(
+            to right,
+            #c00,
+            #cc0,
+            #0c0,
+            #0cc,
+            #00c,
+            #c0c,
+          )
+          0 / 200%;
+        animation: 5s example4 linear infinite;
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+      }
+      @keyframes example4 {
+        100% {
+          background-position: 200%;
+        }
+      }
+
+      .dark {
+        background-color: var("--dark-bg");
+        color: var("--dark-fg");
+      }
+
+      .dark input,
+      .dark textarea,
+      .dark select {
+        background-color: var("--dark-bg");
+        color: var("--dark-fg");
+        border: #ddd 1px solid;
+      }
+      
+      .dark button {
+        background-color: var("--dark-button-bg");
+        color: var("--dark-button-fg");
+        border: #ddd 1px solid;
+      }
+
+      .dark a {
+        color: var("--dark-link-color");
+      }
+      
+      a:hover {
+        color: var("--link-hover");
+      }
+      
+      .menu, .submit_menu {
+        display: none;
+      }
+
+      .menu.active, .submit_menu.active {
+        display: inline-block;
+      }
+      .menu-toggle-button{
+        display:block;
+      }
+    </style>
+  </head>
+  <body>
+    <a href="javascript:var menu = document.querySelector('.menu'); menu.classList.toggle('active');" class="menu-toggle-button">メニュー</a>
+    <div class="menu">
+      <label for="darkmode">ダークモード:</label>
+      <input type="checkbox" id="darkmode" name="darkmode">
+      <label for="font">フォント:</label>
+      <select name="font" id="font-select">
+        <option value="">default</option>
+        <option value="Monospace">Monospace</option>
+        <option value="Arial">Arial</option>
+        <option value="Helvetica">Helvetica</option>
+        <option value="Times New Roman">Times New Roman</option>
+        <option value="Verdana">Verdana</option>
+      </select>
+      <label>Enterで送信</label>
+      <input type="checkbox" name="entersubmit" id="entersubmit" value="specific">
+    </div>
+    <div class="example4"></div>
+    <h1>Yuki BBS 改造インスタンス</h1>
+    <br>
+    <p>k41が作ったYuki BBSの改造インスタンスです。</p>
+    <a href="/bbs/howtouse">使い方</a>
+    <br>
+    <form id="form">
+      <select name="channel" id="channel">
+        <option value="main">雑談</option>
+        <option value="battle">バトスタ</option>
+      </select>
+      <br>
+      <a href="javascript:var submitMenu = document.querySelector('.submit_menu'); submitMenu.classList.toggle('active');">送信設定</a>
+      <div class="submit_menu">
+        <label for="name">名前</label>
+        <input type="text" id="name" value="" maxlength="25" required>　
+        <label for="seed">シード</label>
+        <input type="text" id="seed" value="" required>
+        <br>
+      </div>
+      <br>
+      <label for="message">メッセージ</label>
+      <br>
+      <textarea name="message" rows="6" cols="100" maxlength="500" id="message" required></textarea>
+      <p></p>
+      <button id="btn" onclick="sendMessageByUser()">送信</button>
+  　　スピーカー以上のメッセージのみを表示<input type="checkbox" id="verify" name="verify">
+      <br>
+      <h2>投稿</h2>
+    </form>
+    <style>
+      button.anchor{
+      color: #000;
+      background-color: #fff;
+    }
+      button.userIDAnchor{
+      color: #000;
+      background-color: #fff;
+    }
+    </style>
+
+    <div id="result">loading...</div>
+  
+<script>
+var $form = $("#form");
+var $ta = $("#message");
+var $entersubmit = $("#entersubmit");
+
+$(document).ready(function() {
+      var isChecked = localStorage.getItem("entersubmited");
+      if (isChecked === "true") {
+        $entersubmit.prop("checked", true);
+      }
+    });
+
+    $entersubmit.on("change", function() {
+      if ($(this).is(":checked")) {
+        localStorage.setItem("entersubmited", "true");
+      } else {
+        localStorage.setItem("entersubmited", "false");
+      }
+    });
+
+$(document).on("keydown", "#message", function(e) {
+      if ($entersubmit.is(":checked")) {
+        if (e.keyCode == 13 && !e.shiftKey) { 
+          e.preventDefault(); 
+          if ($ta.val().trim().length > 0) { 
+            sendMessageByUser(); 
+          }
+        }
+      }
+    });
+  
+function autoLink(str) {
+  var urlRegex = /(https?:\/\/[a-zA-Z0-9.\-_@:/~?%&;=+#',()*!]+)/g;
+  return text.replace(urlRegex, function(url) {
+    return '<a href="' + url + '">' + url + '</a>';
+  });
+}
+
+// ライトモード化
+function toLightmode() {
+  $('body').css('background-color', 'white');
+  $('#modal').css('background-color', 'white');
+  $('textarea').css('background-color', 'white');
+  $('input').css('background-color', 'white');
+  $('body').css('color', 'black');
+  $('button').css('color', 'black');
+  $('textarea').css('color', 'black');
+  $('input').css('color', 'black');
+  $('a').css('color', 'black');
+  $('textarea').css('border', '1px solid black');
+  $('input').css('border', '1px solid black');
+}
+  
+// ダークモード化
+function toDarkmode() {
+  $('body').css('background-color', 'black');
+  $('#modal').css('background-color', 'black');
+  $('textarea').css('background-color', 'black');
+  $('input').css('background-color', 'black');
+  $('body').css('color', 'white');
+  $('button').css('color', 'white');
+  $('textarea').css('color', 'white');
+  $('input').css('color', 'white');
+  $('a').css('color', 'white');
+  $('textarea').css('border', '1px solid white');
+  $('input').css('border', '1px solid white');
+}
+  
+// メッセージ送信
+function sendMessage(name, seed, channel, message) {
+  if (name=='' || seed=='' || channel=='' || message=='') {
+    console.warn('Invalid argument(s).')
+  } else {
+    message = btoa(unescape(encodeURIComponent(message)));
+    $.ajax({
+      type: 'GET',
+      url: '/bbs/result',
+      data: {
+        'name': name,
+        'seed': seed,
+        'message': message,
+        'channel': channel
+      }
+    });
+    console.log(message, btoa(message))
+  }
+}
+
+function sendMessageByUser() {
+  var name = $('#name').val();
+  var seed = $('#seed').val();
+  var message = $('#message').val();
+  var channel = $('#channel').val();
+  sendMessage(name, seed, channel, message);
+  $('#message').val("");
+}
+
+
+// メッセージ読み込み
+var xhr;
+function loadMessage() {
+  if (xhr && xhr.readyState !== 4) { xhr.abort(); }
+  
+  var channel = $('#channel').val();
+  var filter = $('#verify').prop('checked');
+  
+  xhr = $.ajax({
+    type: 'GET',
+    url: '/bbs/api',
+    headers: { 'Accept': null },
+    xhrFields: {
+      withCredentials: true
+    },
+    data: {
+      'channel': channel,
+      'verify': filter,
+      't': 0
+    },
+    success: function(data) {
+      $('#result').html(data);
+      $('table tr').each(function() {
+        var firstTd = $(this).find('td:first');
+        var secondTd = $(this).find('td:eq(1)');
+        var number = firstTd.text();
+        var username = secondTd.html();
+        firstTd.html(`<button class="anchor" id="${number}">${number}</button>`);
+        secondTd.html(`<button class="userIDAnchor">${username}</button>`);
+      });
+      $("#result").find("*").contents().each(function() {
+        if (this.nodeType === 3) {
+          var text = $(this).text();
+          var replacedText = text.replace(/≫(\d+) /g, "<a href='#$1'>$&</a>");
+          var urlRegex = /(https?:\/\/[^\s]+)/g;
+　         if (urlRegex.test(text)) {
+            replacedText = replacedText.replace(urlRegex, function(url) {
+              return '<a href="' + url + '">' + url + '</a>';
+            });
+          }
+          $(this).replaceWith(replacedText);
+        }
+      });
+      $('.anchor').click(function() {
+        var currentMsg = $('#message').val();
+        $('#message').val(currentMsg + '≫' + $(this).text() + ' ');
+      });
+      $('.userIDAnchor').click(function() {
+        var currentMsg = $('#message').val();
+        var cmdRegex = /^\/(dis)?speaker|manager|moderator$/g;
+        if (currentMsg.match(cmdRegex)) { $('#message').val(currentMsg + ' ' + $(this).text()); } else { $('#message').val(currentMsg + $(this).text()); }
+      });
+      if (localStorage.getItem('darkmode') === 'true') { toDarkmode(); } else { toLightmode(); }
+    }
+  });
+}
+
+// ネットワークコネクション検知
+function updateConnectionStatus() {
+  var status = $('#status');
+  if (navigator.onLine) {
+    status.removeClass('offline').addClass('online');
+    status.text('online');
+  } else {
+    status.removeClass('online').addClass('offline');
+    status.text('offline');
+  }
+}
+
+$(document).ready(function() {
+  updateConnectionStatus();
+  window.addEventListener('online', updateConnectionStatus);
+  window.addEventListener('offline', updateConnectionStatus);
+
+  loadMessage();
+  
+  var selectedChannel = localStorage.getItem('channel');
+  if (selectedChannel) {
+    $('#channel').val(selectedChannel);
+  }
+  
+  $('#channel').change(function() {
+    var newSelectedChannel = $(this).val();
+    localStorage.setItem('channel', newSelectedChannel);
+    loadMessage();
+  });
+
+  var isVerified = localStorage.getItem('verify') === 'true';
+  $('#verify').prop('checked', isVerified);
+
+  $('#verify').change(function() {
+    var isVerified = $(this).prop('checked');
+    localStorage.setItem('verify', isVerified.toString());
+    loadMessage();
+  });
+
+  var storedName = localStorage.getItem('name');
+  var storedSeed = localStorage.getItem('seed');
+
+  if (storedName) {
+    $('#name').val(storedName);
+  }
+  if (storedSeed) {
+    $('#seed').val(storedSeed);
+  }
+  
+  $('#name').on('input', function() {
+    var newName = $(this).val();
+    localStorage.setItem('name', newName);
+  });
+  $('#seed').on('input', function() {
+    var newSeed = $(this).val();
+    localStorage.setItem('seed', newSeed);
+  });
+
+    $('#openModal').click(function() {
+    $('#modalOverlay').fadeIn(300);
+    $('#modal').fadeIn(300);
+  });
+
+  $('#closeModal').click(function() {
+    $('#modalOverlay').fadeOut(300);
+    $('#modal').fadeOut(300);
+  });
+  
+  var selectedFont = localStorage.getItem('font');
+  if (selectedFont) {
+    $('#font-select').val(selectedFont);
+    $('body').css('font-family', selectedFont);
+  }
+  
+  $('#font-select').change(function() {
+    var newSelectedFont = $(this).val();
+    localStorage.setItem('font', newSelectedFont);
+    $('body').css('font-family', newSelectedFont);
+  });
+  
+  var selectedFontSize = localStorage.getItem('font-size');
+  if (selectedFontSize) {
+    $('#font-size').val(selectedFontSize);
+    $('body').css('font-size', `${selectedFontSize}px`);
+    $('#font-size-val').text(`${selectedFontSize}px`);
+  }
+  
+  $('#font-size').change(function() {
+    var newFontSize = $(this).val();
+    localStorage.setItem('font-size', newFontSize)
+    $('body').css('font-size', `${newFontSize}px`);
+    $('#font-size-val').text(`${newFontSize}px`);
+  });
+
+  var isDarkmode = localStorage.getItem('darkmode') === 'true';
+  $('#darkmode').prop('checked', isDarkmode);
+
+  $('#darkmode').change(function() {
+    var isDarkmode = $(this).prop('checked');
+    localStorage.setItem('darkmode', isDarkmode.toString());
+    if (isDarkmode) { toDarkmode(); } else { toLightmode(); }
+  });
+  if (isDarkmode) { toDarkmode(); } else { toLightmode(); }
+
+  loadMessage();
+  setInterval(function() { loadMessage(); }, 5000);
+});
+</script>
+<script src="data:text/javascript;base64,KGZ1bmN0aW9uKCkgewogICAgbGV0IHNjcmlwdCA9IGRvY3VtZW50LmNyZWF0ZUVsZW1lbnQoJ3NjcmlwdCcpOyAKICAgIHNjcmlwdC5zcmM9Imh0dHBzOi8vY2RuLmpzZGVsaXZyLm5ldC9ucG0vZXJ1ZGEiOyAKICAgIGRvY3VtZW50LmJvZHkuYXBwZW5kQ2hpbGQoc2NyaXB0KTsgCiAgICBzY3JpcHQub25sb2FkID0gZnVuY3Rpb24gKCkgeyBlcnVkYS5pbml0KCkgfSAKfSkoKTs="></script>
+<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+
+</body>
+</html>
