@@ -25,7 +25,7 @@ def home():
 
 @app.route("/bbs")
 def view_bbs():
-    return render_template("bbs.html", request=request)
+    return render_template("view/bbs.html", request=request)
 
 @app.route("/bbs/info")
 def view_bbs_info():
@@ -63,7 +63,7 @@ def load_instance():
 
 @app.route("/bbs/howtouse")
 def view_bbs_how_to_use():
-    return render_template("bbshow.html", request=request)
+    return render_template("view/bbshow.html", request=request)
 
 if __name__ == "__main__":
     app.run(debug=True)
