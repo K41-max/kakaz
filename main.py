@@ -66,4 +66,4 @@ def view_bbs_how_to_use():
     return render_template("bbshow.html")
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0')
