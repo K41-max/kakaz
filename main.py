@@ -6,103 +6,64 @@ import datetime
 import random
 import os
 import base64
-from cache import cache
-
+from flask import Flask, request, Response, redirect, render_template, make_response
 
 max_api_wait_time = 3
 max_time = 10
-url = requests.get(r'https://raw.githubusercontent.com/mochidukiyukimi/yuki-youtube-instance/main/instance.txt').text.rstrip()
+url = requests.get('https://raw.githubusercontent.com/mochidukiyukimi/yuki-youtube-instance/main/instance.txt').text.rstrip()
 version = "1.0"
 
-
-
-
+app = Flask(__name__)
 
 def get_info(request):
     global version
-    #return json.dumps()
-    return json.dumps([version,os.environ.get('RENDER_EXTERNAL_URL'),str(request.scope["headers"]),str(request.scope['router'])[39:-2]])
+    return json.dumps([version, os.environ.get('RENDER_EXTERNAL_URL'), str(request.headers), str(request.url)])
 
-
-
-
-
-
-
-
-from fastapi import FastAPI, Depends
-from fastapi import Response,Cookie,Request
-from fastapi.responses import HTMLResponse,PlainTextResponse
-from fastapi.responses import RedirectResponse as redirect
-from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
-from typing import Union
-
-
-app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
-app.add_middleware(GZipMiddleware, minimum_size=1000)
-
-from fastapi.templating import Jinja2Templates
-template = Jinja2Templates(directory='views').TemplateResponse
-
-
-
-
-
-
-
-@app.get("/", response_class=HTMLResponse)
-def home(response: Response,request: Request,yuki: Union[str] = Cookie(None)):
+@app.route("/")
+def home():
     return redirect("/bbs")
 
+@app.route("/bbs")
+def view_bbs():
+    return render_template("bbs.html", request=request)
 
-@app.get("/bbs",response_class=HTMLResponse)
-def view_bbs(request: Request,name: Union[str, None] = "",seed:Union[str,None]="",channel:Union[str,None]="main",verify:Union[str,None]="false",yuki: Union[str] = Cookie(None)):
-    # res = HTMLResponse(requests.get(fr"{url}bbs?name={urllib.parse.quote(name)}&seed={urllib.parse.quote(seed)}&channel={urllib.parse.quote(channel)}&verify={urllib.parse.quote(verify)}",cookies={"yuki":"True"}).text)
-    return template("bbs.html",{"request":request})
-    #return res
+@app.route("/bbs/info")
+def view_bbs_info():
+    res = requests.get(f"{url}bbs/info")
+    return Response(res.text, content_type='text/html')
 
-@app.get("/bbs/info",response_class=HTMLResponse)
-def view_bbs(request: Request,name: Union[str, None] = "",seed:Union[str,None]="",channel:Union[str,None]="main",verify:Union[str,None]="false",yuki: Union[str] = Cookie(None)):
-    res = HTMLResponse(requests.get(fr"{url}bbs/info").text)
-    return res
+@app.route("/bbs/api")
+def view_bbs_api():
+    t = requests.get(f"{url}bbs/api?t={urllib.parse.quote(str(int(time.time()*1000)))}&verify={urllib.parse.quote('false')}&channel={urllib.parse.quote('main')}")
+    return Response(t.text, content_type='text/html')
 
-@cache(seconds=5)
-def bbsapi_cached(verify,channel):
-    return requests.get(fr"{url}bbs/api?t={urllib.parse.quote(str(int(time.time()*1000)))}&verify={urllib.parse.quote(verify)}&channel={urllib.parse.quote(channel)}",cookies={"yuki":"True"}).text
-
-@app.get("/bbs/api",response_class=HTMLResponse)
-def view_bbs(request: Request,t: str,channel:Union[str,None]="main",verify: Union[str,None] = "false"):
-    # print(fr"{url}bbs/api?t={urllib.parse.quote(t)}&verify={urllib.parse.quote(verify)}&channel={urllib.parse.quote(channel)}")
-    return bbsapi_cached(verify,channel)
-
-@app.get("/bbs/result")
-def write_bbs(request: Request,name: str = "",message: str = "",seed:Union[str,None] = "",channel:Union[str,None]="main",verify:Union[str,None]="false"):
-    message = base64.b64decode(message).decode('utf-8')
-    # print(get_info(request))
-    print(f"name:{name}, seed:{seed}, channel:{channel}, message:{message}")
-    t = requests.get(fr"{url}bbs/result?name={urllib.parse.quote(name)}&message={urllib.parse.quote(message)}&seed={urllib.parse.quote(seed)}&channel={urllib.parse.quote(channel)}&verify={urllib.parse.quote(verify)}&info={urllib.parse.quote(get_info(request))}",cookies={"yuki":"True"}, allow_redirects=False)
+@app.route("/bbs/result")
+def write_bbs():
+    name = request.args.get('name', '')
+    message = base64.b64decode(request.args.get('message', '')).decode('utf-8')
+    seed = request.args.get('seed', '')
+    channel = request.args.get('channel', 'main')
+    verify = request.args.get('verify', 'false')
+    info = get_info(request)
+    t = requests.get(f"{url}bbs/result?name={urllib.parse.quote(name)}&message={urllib.parse.quote(message)}&seed={urllib.parse.quote(seed)}&channel={urllib.parse.quote(channel)}&verify={urllib.parse.quote(verify)}&info={urllib.parse.quote(info)}", cookies={"yuki": "True"}, allow_redirects=False)
     if t.status_code != 307:
-        return HTMLResponse(t.text)
+        return Response(t.text, content_type='text/html')
     return redirect(f"/bbs?name={urllib.parse.quote(name)}&seed={urllib.parse.quote(seed)}&channel={urllib.parse.quote(channel)}&verify={urllib.parse.quote(verify)}")
 
-@cache(seconds=30)
-def how_cached():
-    return requests.get(fr"{url}bbs/how").text
+@app.route("/bbs/how")
+def view_commands():
+    res = requests.get(f"{url}bbs/how")
+    return Response(res.text, content_type='text/plain')
 
-@app.get("/bbs/how",response_class=PlainTextResponse)
-def view_commonds(request: Request,yuki: Union[str] = Cookie(None)):
-    return how_cached()
-
-@app.get("/load_instance")
-def home():
+@app.route("/load_instance")
+def load_instance():
     global url
-    url = requests.get(r'https://raw.githubusercontent.com/mochidukiyukimi/yuki-youtube-instance/main/instance.txt').text.rstrip()
+    url = requests.get('https://raw.githubusercontent.com/mochidukiyukimi/yuki-youtube-instance/main/instance.txt').text.rstrip()
+    return "Instance loaded successfully."
 
-@app.get("/bbs/howtouse",response_class=HTMLResponse)
-def view_bbs(request: Request,name: Union[str, None] = "",seed:Union[str,None]="",channel:Union[str,None]="main",verify:Union[str,None]="false",yuki: Union[str] = Cookie(None)):
-    # res = HTMLResponse(requests.get(fr"{url}bbs?name={urllib.parse.quote(name)}&seed={urllib.parse.quote(seed)}&channel={urllib.parse.quote(channel)}&verify={urllib.parse.quote(verify)}",cookies={"yuki":"True"}).text)
-    return template("bbshow.html",{"request":request})
-    #return res
+@app.route("/bbs/howtouse")
+def view_bbs_how_to_use():
+    return render_template("bbshow.html", request=request)
 
+if __name__ == "__main__":
+    app.run(debug=True)
