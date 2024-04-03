@@ -2,24 +2,21 @@ import json
 import requests
 import urllib.parse
 import time
+import datetime
+import random
+import os
 import base64
-from flask import Flask, request, Response, redirect, render_template
-from flask_caching import Cache
-from flask_gzip import Gzip
-
-app = Flask(__name__)
-gzip = Gzip(app)
-
-# Flask-Cachingの設定
-cache = Cache(config={'CACHE_TYPE': 'simple'})
-cache.init_app(app)
+from flask import Flask, request, Response, redirect, render_template, make_response
 
 max_api_wait_time = 3
 max_time = 10
 url = requests.get('https://raw.githubusercontent.com/mochidukiyukimi/yuki-youtube-instance/main/instance.txt').text.rstrip()
 version = "1.0"
 
-def get_info():
+app = Flask(__name__)
+
+def get_info(request):
+    global version
     return json.dumps([version, os.environ.get('RENDER_EXTERNAL_URL'), str(request.headers), str(request.url)])
 
 @app.route("/")
@@ -36,7 +33,6 @@ def view_bbs_info():
     return Response(res.text, content_type='text/html')
 
 @app.route("/bbs/api")
-@cache.cached(timeout=300)  # キャッシュを5分間保存
 def view_bbs_api():
     t = requests.get(f"{url}bbs/api?t={urllib.parse.quote(str(int(time.time()*1000)))}&verify={urllib.parse.quote('false')}&channel={urllib.parse.quote('main')}")
     return Response(t.text, content_type='text/html')
@@ -48,7 +44,7 @@ def write_bbs():
     seed = request.args.get('seed', '')
     channel = request.args.get('channel', 'main')
     verify = request.args.get('verify', 'false')
-    info = get_info()
+    info = get_info(request)
     t = requests.get(f"{url}bbs/result?name={urllib.parse.quote(name)}&message={urllib.parse.quote(message)}&seed={urllib.parse.quote(seed)}&channel={urllib.parse.quote(channel)}&verify={urllib.parse.quote(verify)}&info={urllib.parse.quote(info)}", cookies={"yuki": "True"}, allow_redirects=False)
     if t.status_code != 307:
         return Response(t.text, content_type='text/html')
@@ -70,4 +66,4 @@ def view_bbs_how_to_use():
     return render_template("bbshow.html")
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, host='0.0.0.0')
